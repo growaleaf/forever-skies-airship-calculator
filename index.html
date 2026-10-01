@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forever Skies Airship Weight &amp; Power Calculator</title>
+<meta name="description" content="Work out why your Forever Skies airship won't climb: lift margin from your balloon cores and expansions against your ship weight, plus a power margin check, with the cheapest fix for whichever one is short.">
+<style>
+  :root{
+    --bg:#10161c; --panel:#161e26; --panel2:#1c2630; --line:#2a3744;
+    --ink:#e7edf2; --muted:#93a4b3; --accent:#e8a33d; --good:#6fbf8f; --bad:#d9715a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  main{max-width:880px; margin:0 auto; padding:2rem 1.25rem 4rem}
+  h1{font-size:1.9rem; margin:.2rem 0 .3rem; line-height:1.2}
+  h2{font-size:1.25rem; margin:2.2rem 0 .6rem; border-bottom:1px solid var(--line); padding-bottom:.35rem}
+  p{margin:.6rem 0}
+  .lede{color:var(--muted); font-size:1.02rem; max-width:68ch}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:1.1rem 1.3rem; margin:1rem 0}
+  .row{display:flex; flex-wrap:wrap; gap:1rem 1.5rem; margin:.4rem 0}
+  .field{flex:1 1 220px; min-width:180px}
+  label{display:block; font-size:.82rem; color:var(--muted); margin-bottom:.3rem}
+  label .hint{display:block; font-size:.76rem; color:var(--muted); font-weight:400; margin-top:.15rem}
+  input[type=number]{
+    width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--ink);
+    padding:.5rem .6rem; border-radius:5px; font-size:1rem; font-family:inherit;
+  }
+  input[type=number]:focus{outline:2px solid var(--accent); outline-offset:1px}
+  .verdict{
+    margin-top:1rem; padding:.9rem 1.1rem; border-radius:6px; border-left:4px solid var(--line);
+    background:var(--panel2);
+  }
+  .verdict.ok{border-left-color:var(--good)}
+  .verdict.bad{border-left-color:var(--bad)}
+  .verdict .big{font-size:1.15rem; font-weight:600}
+  .verdict .big .n{font-variant-numeric:tabular-nums}
+  .verdict.ok .big .n{color:var(--good)}
+  .verdict.bad .big .n{color:var(--bad)}
+  .verdict .sub{color:var(--muted); font-size:.92rem; margin-top:.4rem}
+  .note{
+    background:var(--panel); border-left:3px solid var(--accent); border-radius:0 6px 6px 0;
+    padding:.75rem 1rem; margin:1rem 0; font-size:.92rem; color:var(--muted);
+  }
+  .note strong{color:var(--ink)}
+  table{border-collapse:collapse; width:100%; font-size:.92rem; margin:.6rem 0}
+  th,td{padding:.45rem .7rem; text-align:left; border-bottom:1px solid var(--line)}
+  th{color:var(--accent); font-weight:600; font-size:.82rem; text-transform:uppercase; letter-spacing:.02em}
+  td.n{text-align:right; font-variant-numeric:tabular-nums}
+  .srcs{font-size:.82rem; color:var(--muted)}
+  .srcs li{margin:.25rem 0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.88em; background:var(--panel2); padding:1px 5px; border-radius:3px}
+  footer{border-top:1px solid var(--line); margin-top:3rem; padding-top:1.2rem; color:var(--muted); font-size:.85rem}
+  footer p{max-width:70ch}
+</style>
+</head>
+<body>
+<main>
+  <p class="lede" style="margin:0 0 .3rem; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--accent)">Forever Skies &middot; fan-made, unofficial</p>
+  <h1>Airship Weight &amp; Power Calculator</h1>
+  <p class="lede">
+    Your airship stops climbing and nobody onboard can tell you why: too much weight, or not enough
+    power. This separates the two and tells you which upgrade actually fixes it — a cheaper balloon
+    expansion, a whole new balloon core, or another generator.
+  </p>
+
+  <h2>Lift budget</h2>
+  <p class="lede" style="font-size:.9rem">
+    Your airship starts at <strong>500&nbsp;kg</strong> of lift. Every additional balloon core adds
+    another <strong>500&nbsp;kg</strong>; every balloon expansion you've bought adds
+    <strong>400&nbsp;kg</strong>. Enter what you've built, then your current ship weight off the
+    Cargo/Weight panel.
+  </p>
+  <div class="panel">
+    <div class="row">
+      <div class="field">
+        <label for="cores">Extra balloon cores installed
+          <span class="hint">beyond your ship's first balloon</span>
+        </label>
+        <input type="number" id="cores" min="0" step="1" value="0">
+      </div>
+      <div class="field">
+        <label for="expansions">Balloon expansions purchased
+          <span class="hint">total, across all cores</span>
+        </label>
+        <input type="number" id="expansions" min="0" step="1" value="0">
+      </div>
+      <div class="field">
+        <label for="weight">Current ship weight (kg)
+          <span class="hint">read off your in-game Weight/Cargo panel</span>
+        </label>
+        <input type="number" id="weight" min="0" step="1" value="500">
+      </div>
+    </div>
+    <div class="verdict" id="liftVerdict"></div>
+  </div>
+
+  <h2>Power budget</h2>
+  <p class="lede" style="font-size:.9rem">
+    Forever Skies doesn't publish a fixed fuel-burn rate per generator — burn scales with how much
+    total power your devices are drawing, not a flat number per generator tier. So this reads the two
+    numbers straight off your own Power panel rather than guessing at them.
+  </p>
+  <div class="panel">
+    <div class="row">
+      <div class="field">
+        <label for="genPower">Power generated (E/m)
+          <span class="hint">sum shown on your Power panel</span>
+        </label>
+        <input type="number" id="genPower" min="0" step="1" value="100">
+      </div>
+      <div class="field">
+        <label for="drawPower">Power drawn (E/m)
+          <span class="hint">sum of everything switched on</span>
+        </label>
+        <input type="number" id="drawPower" min="0" step="1" value="100">
+      </div>
+    </div>
+    <div class="verdict" id="powerVerdict"></div>
+  </div>
+
+  <h2>Fuel runway</h2>
+  <div class="panel">
+    <div class="row">
+      <div class="field">
+        <label for="fuel">Fuel remaining (L)
+          <span class="hint">read off your Fuel panel</span>
+        </label>
+        <input type="number" id="fuel" min="0" step="1" value="0">
+      </div>
+      <div class="field">
+        <label for="burn">Burn rate (L/min)
+          <span class="hint">also on the Fuel panel — it moves with your power draw</span>
+        </label>
+        <input type="number" id="burn" min="0" step="0.01" value="0">
+      </div>
+    </div>
+    <div class="verdict" id="fuelVerdict"></div>
+  </div>
+
+  <h2>What each part does</h2>
+  <table>
+    <thead><tr><th>Part</th><th class="n">Effect</th><th>Confirmed by</th></tr></thead>
+    <tbody>
+      <tr><td>Starting balloon</td><td class="n">500 kg lift</td><td>2 sources</td></tr>
+      <tr><td>Extra Balloon Core</td><td class="n">+500 kg lift each</td><td>2 sources</td></tr>
+      <tr><td>Balloon Expansion</td><td class="n">+400 kg lift each</td><td>2 sources</td></tr>
+      <tr><td>Basic Power Generator</td><td class="n">+100 E/m (wiki figure)</td><td>1 source — unverified</td></tr>
+      <tr><td>Advanced Power Generator</td><td class="n">+250 E/m (wiki figure)</td><td>1 source — unverified</td></tr>
+      <tr><td>Next-Gen Power Generator</td><td class="n">+400 E/m (wiki figure)</td><td>1 source — unverified</td></tr>
+    </tbody>
+  </table>
+  <p class="note">
+    <strong>Why generator wattage isn't in the calculator above.</strong> forever-skies-database.fandom.com
+    lists Basic/Advanced/Next-Gen Power Generators at 100, 250 and 400 E/m, but every other source this
+    build checked (Steam community guides, gamepressure.com, techraptor.net) either didn't cover it or
+    was unreachable this session — so these three numbers have exactly one source, not the two this
+    lane requires before treating a number as confirmed. They're shown here only as a reference, not
+    built into the arithmetic. Read your own Fabricator tooltip before relying on them.
+  </p>
+  <p class="note">
+    <strong>Turbines are a separate system, deliberately left out.</strong> Turbines set your maximum
+    altitude, not your lift — ship weight has no effect on the altitude ceiling, only on whether you
+    can take off and hover at all. The specific turbine-to-altitude numbers conflicted across the
+    sources this build checked (one Steam discussion gave +20 m per turbine with a 230 masl floor,
+    another gave +20/+30 m with a 220 masl floor), so no turbine numbers are published on this page.
+    Held for a later session alongside the interactive location map.
+  </p>
+
+  <h2>Sources</h2>
+  <ul class="srcs">
+    <li>Balloon Core (+500 kg): <a href="https://forever-skies-database.fandom.com/wiki/Balloon_Core">forever-skies-database.fandom.com/wiki/Balloon_Core</a> and <a href="https://www.gamepressure.com/forever-skies/how-to-increase-airship-capacity/ze10d7b">gamepressure.com — How to increase Airship capacity?</a></li>
+    <li>Balloon Expansion (+400 kg) and starting 500 kg: same two sources above</li>
+    <li>Power generator E/m figures (unverified, single source): <a href="https://forever-skies-database.fandom.com/wiki/Basic_Power_Generator">Basic</a>, <a href="https://forever-skies-database.fandom.com/wiki/Advanced_Power_Generator">Advanced</a>, <a href="https://forever-skies-database.fandom.com/wiki/Next-Gen_Power_Generator">Next-Gen Power Generator</a> wiki pages</li>
+    <li>Fuel burn scaling with total power draw, not a fixed per-generator rate: Steam Community discussion, <a href="https://steamcommunity.com/app/1641960/discussions/0/4330852793643954506/">"Further improving fabricators / fuel and helium consumption"</a></li>
+    <li>Turbines govern altitude, not weight capacity: Steam Community discussions on turbine altitude limits (figures conflicted between threads, not used as computed constants)</li>
+  </ul>
+
+  <footer>
+    <p>Not affiliated with Far From Home or the Forever Skies publisher. Figures above are either
+    confirmed against two independent sources or explicitly marked as single-sourced and excluded
+    from the live calculation — see the notes above each table.</p>
+  </footer>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var coresEl = document.getElementById("cores");
+  var expEl = document.getElementById("expansions");
+  var weightEl = document.getElementById("weight");
+  var liftVerdict = document.getElementById("liftVerdict");
+
+  var genEl = document.getElementById("genPower");
+  var drawEl = document.getElementById("drawPower");
+  var powerVerdict = document.getElementById("powerVerdict");
+
+  var fuelEl = document.getElementById("fuel");
+  var burnEl = document.getElementById("burn");
+  var fuelVerdict = document.getElementById("fuelVerdict");
+
+  var CORE_KG = 500, EXPANSION_KG = 400, BASE_KG = 500;
+  var CORE_COST = "10 Epoxy, 8 Helium, 5 Copper Element";
+  var EXPANSION_COST = "4 Helium, 8 Machine Parts";
+
+  function num(el){
+    var v = parseFloat(el.value);
+    return isNaN(v) || v < 0 ? 0 : v;
+  }
+
+  function renderLift(){
+    var cores = num(coresEl), exp = num(expEl), weight = num(weightEl);
+    var capacity = BASE_KG + cores * CORE_KG + exp * EXPANSION_KG;
+    var margin = capacity - weight;
+    var ok = margin >= 0;
+    liftVerdict.className = "verdict " + (ok ? "ok" : "bad");
+    if(ok){
+      liftVerdict.innerHTML =
+        '<div class="big">Lift capacity: <span class="n">' + capacity.toLocaleString() + ' kg</span> — '
+        + '<span class="n">' + margin.toLocaleString() + ' kg</span> to spare</div>'
+        + '<div class="sub">Weight ' + weight.toLocaleString() + ' kg against ' + capacity.toLocaleString()
+        + ' kg of lift. Room to add more rooms or cargo before this becomes the limiting factor.</div>';
+    } else {
+      var deficit = -margin;
+      var fix;
+      if(deficit <= EXPANSION_KG){
+        fix = 'One more <strong>balloon expansion</strong> (+400 kg, costs ' + EXPANSION_COST
+          + ') clears this deficit by itself.';
+      } else if(deficit <= CORE_KG){
+        fix = 'One more <strong>balloon core</strong> (+500 kg, costs ' + CORE_COST
+          + ') clears this deficit by itself; an expansion alone (+400 kg) falls just short.';
+      } else {
+        var neededCores = Math.ceil(deficit / CORE_KG);
+        fix = 'A single expansion or core will not close this. Cheapest combo: '
+          + neededCores + ' more balloon core' + (neededCores === 1 ? '' : 's')
+          + ' (' + (neededCores * CORE_KG).toLocaleString() + ' kg), or mix cores and expansions — '
+          + 'each core costs ' + CORE_COST + ', each expansion costs ' + EXPANSION_COST + '.';
+      }
+      liftVerdict.innerHTML =
+        '<div class="big">Over by <span class="n">' + deficit.toLocaleString() + ' kg</span> — this ship will not lift off</div>'
+        + '<div class="sub">Lift capacity is ' + capacity.toLocaleString() + ' kg against ' + weight.toLocaleString()
+        + ' kg of weight. ' + fix + '</div>';
+    }
+  }
+
+  function renderPower(){
+    var gen = num(genEl), draw = num(drawEl);
+    var margin = gen - draw;
+    var ok = margin >= 0;
+    powerVerdict.className = "verdict " + (ok ? "ok" : "bad");
+    if(ok){
+      powerVerdict.innerHTML =
+        '<div class="big">Power margin: <span class="n">+' + margin.toLocaleString() + ' E/m</span></div>'
+        + '<div class="sub">Generating ' + gen.toLocaleString() + ' E/m against ' + draw.toLocaleString()
+        + ' E/m drawn. You can switch on more equipment before anything browns out.</div>';
+    } else {
+      var short = -margin;
+      powerVerdict.innerHTML =
+        '<div class="big">Short by <span class="n">' + short.toLocaleString() + ' E/m</span></div>'
+        + '<div class="sub">Drawing ' + draw.toLocaleString() + ' E/m against ' + gen.toLocaleString()
+        + ' E/m generated. Add generator capacity, or switch something off — whichever is cheaper'
+        + ' right now. Check your Fabricator for the current generator tiers available; this page does'
+        + ' not assume a fixed E/m per tier (see the note below the reference table).</div>';
+    }
+  }
+
+  function renderFuel(){
+    var fuel = num(fuelEl), burn = num(burnEl);
+    if(burn <= 0){
+      fuelVerdict.className = "verdict";
+      fuelVerdict.innerHTML = '<div class="sub">Enter a burn rate above 0 to estimate your runway.</div>';
+      return;
+    }
+    var minutes = fuel / burn;
+    var hours = Math.floor(minutes / 60);
+    var mins = Math.round(minutes - hours * 60);
+    fuelVerdict.className = "verdict ok";
+    fuelVerdict.innerHTML =
+      '<div class="big">Runway: <span class="n">' + hours + 'h ' + mins + 'm</span></div>'
+      + '<div class="sub">At the current burn rate, ' + fuel.toLocaleString() + ' L lasts about '
+      + minutes.toFixed(1) + ' minutes. Burn rate rises if you switch on more power-hungry equipment, so'
+      + ' re-check it after any build changes.</div>';
+  }
+
+  [coresEl, expEl, weightEl].forEach(function(el){ el.addEventListener("input", renderLift); });
+  [genEl, drawEl].forEach(function(el){ el.addEventListener("input", renderPower); });
+  [fuelEl, burnEl].forEach(function(el){ el.addEventListener("input", renderFuel); });
+
+  renderLift();
+  renderPower();
+  renderFuel();
+})();
+</script>
+</body>
+</html>
